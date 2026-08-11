@@ -25,8 +25,12 @@ def main():
     )
 
     final_capital, trades, equity_curve = run_backtest(
-        btc,
-        initial_capital
+    btc,
+    initial_capital=initial_capital,
+    fee_rate=0.001,
+    stop_loss=0.02,
+    take_profit=0.04
+)
     )
 
     statistics = calculate_statistics(
@@ -87,6 +91,11 @@ def main():
         f"Max Drawdown    : "
         f"{max_drawdown:.2f}%"
     )
+
+    print(
+        f"Total Fees      : "
+        f"${statistics['total_fees']:,.2f}"
+    ) 
 
     print("\n=====================================\n")
 
