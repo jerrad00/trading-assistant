@@ -1,3 +1,4 @@
+import csv
 import matplotlib.pyplot as plt
 
 from data.market_data import get_market_data
@@ -12,7 +13,65 @@ from backtest.engine import (
 )
 
 
+def save_trades_to_csv(trades):
+    completed_trades = [
+        trade
+        for trade in trades
+        if trade["type"] in [
+            "SELL",
+            "STOP LOSS",
+            "TAKE PROFIT",
+            "FINAL EXIT"
+        ]
+    ]
+
+    if not completed_trades:
+        return
+
+    filename = "trades.csv"
+
+    fields = [
+        "date",
+        "type",
+        "entry_price",
+        "exit_price",
+        "position",
+        "entry_value",
+        "exit_value",
+        "entry_fee",
+        "exit_fee",
+        "total_fees",
+        "gross_profit",
+        "net_profit",
+        "return_percent"
+    ]
+
+    with open(
+        filename,
+        "w",
+        newline="",
+        encoding="utf-8"
+    ) as file:
+
+        writer = csv.DictWriter(
+            file,
+            fieldnames=fields,
+            extrasaction="ignore"
+        )
+
+        writer.writeheader()
+
+        writer.writerows(
+            completed_trades
+        )
+
+    print(
+        f"Trade history saved to: {filename}"
+    )
+
+
 def main():
+
     initial_capital = 10000
 
     btc = get_market_data(
@@ -40,7 +99,8 @@ def main():
         initial_capital=initial_capital,
         fee_rate=0.001,
         stop_loss=0.02,
-        take_profit=0.04
+        take_profit=0.04,
+        risk_per_trade=0.01
     )
 
     statistics = calculate_statistics(
@@ -53,7 +113,9 @@ def main():
         equity_curve
     )
 
-    print("\n========== BACKTEST REPORT ==========\n")
+    print(
+        "\n========== BACKTEST REPORT ==========\n"
+    )
 
     print(
         f"Initial Capital : "
@@ -107,7 +169,11 @@ def main():
         f"${statistics['total_fees']:,.2f}"
     )
 
-    print("\n=====================================\n")
+    print(
+        "\n=====================================\n"
+    )
+
+    save_trades_to_csv(trades)
 
     # Equity Curve
 
