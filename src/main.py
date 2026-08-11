@@ -4,6 +4,7 @@ from data.market_data import get_market_data
 from indicators.ema import calculate_ema
 from indicators.rsi import calculate_rsi
 from strategy.basic_strategy import generate_signal
+
 from backtest.engine import (
     run_backtest,
     calculate_statistics,
@@ -14,10 +15,20 @@ from backtest.engine import (
 def main():
     initial_capital = 10000
 
-    btc = get_market_data("BTC-USD", period="1y")
+    btc = get_market_data(
+        "BTC-USD",
+        period="1y"
+    )
 
-    btc["EMA20"] = calculate_ema(btc, 20)
-    btc["RSI14"] = calculate_rsi(btc, 14)
+    btc["EMA20"] = calculate_ema(
+        btc,
+        20
+    )
+
+    btc["RSI14"] = calculate_rsi(
+        btc,
+        14
+    )
 
     btc["Signal"] = btc.apply(
         generate_signal,
@@ -25,12 +36,11 @@ def main():
     )
 
     final_capital, trades, equity_curve = run_backtest(
-    btc,
-    initial_capital=initial_capital,
-    fee_rate=0.001,
-    stop_loss=0.02,
-    take_profit=0.04
-)
+        btc,
+        initial_capital=initial_capital,
+        fee_rate=0.001,
+        stop_loss=0.02,
+        take_profit=0.04
     )
 
     statistics = calculate_statistics(
@@ -95,11 +105,11 @@ def main():
     print(
         f"Total Fees      : "
         f"${statistics['total_fees']:,.2f}"
-    ) 
+    )
 
     print("\n=====================================\n")
 
-    # رسم Equity Curve
+    # Equity Curve
 
     dates = [
         point["date"]
@@ -119,9 +129,13 @@ def main():
         label="Equity"
     )
 
-    plt.title("Trading Strategy Equity Curve")
+    plt.title(
+        "Trading Strategy Equity Curve"
+    )
+
     plt.xlabel("Date")
     plt.ylabel("Portfolio Value ($)")
+
     plt.legend()
     plt.grid(True)
 
