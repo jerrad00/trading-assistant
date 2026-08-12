@@ -7,6 +7,7 @@ def run_backtest(
     risk_per_trade=0.01
 ):
     capital = initial_capital
+
     position = 0
     entry_price = 0
     entry_value = 0
@@ -16,6 +17,7 @@ def run_backtest(
     equity_curve = []
 
     for index, row in data.iterrows():
+
         price = float(row["Close"])
         signal = row["Signal"]
 
@@ -25,33 +27,52 @@ def run_backtest(
 
         if signal == "BUY" and position == 0:
 
-            risk_amount = capital * risk_per_trade
+            risk_amount = (
+                capital * risk_per_trade
+            )
 
-            stop_distance = price * stop_loss
+            stop_distance = (
+                price * stop_loss
+            )
 
-            if stop_distance > 0:
-                position = risk_amount / stop_distance
-            else:
-                position = 0
+            if stop_distance <= 0:
+                continue
 
-            entry_value = position * price
-            entry_fee = entry_value * fee_rate
+            position = (
+                risk_amount / stop_distance
+            )
 
-            total_entry_cost = entry_value + entry_fee
+            entry_value = (
+                position * price
+            )
 
-            # اگر حجم معامله بیشتر از سرمایه باشد
-            if total_entry_cost > capital:
-                entry_value = capital / (1 + fee_rate)
+            entry_fee = (
+                entry_value * fee_rate
+            )
 
-                position = entry_value / price
+            total_cost = (
+                entry_value + entry_fee
+            )
 
-                entry_fee = entry_value * fee_rate
+            if total_cost > capital:
 
-                total_entry_cost = (
+                entry_value = (
+                    capital / (1 + fee_rate)
+                )
+
+                position = (
+                    entry_value / price
+                )
+
+                entry_fee = (
+                    entry_value * fee_rate
+                )
+
+                total_cost = (
                     entry_value + entry_fee
                 )
 
-            capital -= total_entry_cost
+            capital -= total_cost
 
             entry_price = price
 
@@ -65,28 +86,33 @@ def run_backtest(
             })
 
         # =========================
-        # POSITION MANAGEMENT
+        # EXIT MANAGEMENT
         # =========================
 
         elif position > 0:
 
             stop_price = (
-                entry_price * (1 - stop_loss)
+                entry_price
+                * (1 - stop_loss)
             )
 
             target_price = (
-                entry_price * (1 + take_profit)
+                entry_price
+                * (1 + take_profit)
             )
 
             exit_reason = None
 
             if price <= stop_price:
+
                 exit_reason = "STOP LOSS"
 
             elif price >= target_price:
+
                 exit_reason = "TAKE PROFIT"
 
             elif signal == "SELL":
+
                 exit_reason = "SELL"
 
             # =========================
@@ -95,33 +121,39 @@ def run_backtest(
 
             if exit_reason:
 
-                exit_value = position * price
+                exit_value = (
+                    position * price
+                )
 
                 exit_fee = (
                     exit_value * fee_rate
                 )
 
-                capital_from_trade = (
+                capital_received = (
                     exit_value - exit_fee
                 )
 
                 gross_profit = (
-                    exit_value - entry_value
+                    exit_value
+                    - entry_value
                 )
 
                 total_fees = (
-                    entry_fee + exit_fee
+                    entry_fee
+                    + exit_fee
                 )
 
                 net_profit = (
-                    gross_profit - total_fees
+                    gross_profit
+                    - total_fees
                 )
 
                 return_percent = (
-                    net_profit / entry_value
+                    net_profit
+                    / entry_value
                 ) * 100
 
-                capital += capital_from_trade
+                capital += capital_received
 
                 trades.append({
                     "date": index,
@@ -150,16 +182,16 @@ def run_backtest(
 
         if position > 0:
 
-            current_position_value = (
+            position_value = (
                 position * price
             )
 
             equity = (
-                capital +
-                current_position_value
+                capital + position_value
             )
 
         else:
+
             equity = capital
 
         equity_curve.append({
@@ -185,27 +217,31 @@ def run_backtest(
             exit_value * fee_rate
         )
 
-        capital_from_trade = (
+        capital_received = (
             exit_value - exit_fee
         )
 
         gross_profit = (
-            exit_value - entry_value
+            exit_value
+            - entry_value
         )
 
         total_fees = (
-            entry_fee + exit_fee
+            entry_fee
+            + exit_fee
         )
 
         net_profit = (
-            gross_profit - total_fees
+            gross_profit
+            - total_fees
         )
 
         return_percent = (
-            net_profit / entry_value
+            net_profit
+            / entry_value
         ) * 100
 
-        capital += capital_from_trade
+        capital += capital_received
 
         trades.append({
             "date": data.index[-1],
@@ -223,7 +259,11 @@ def run_backtest(
             "return_percent": return_percent
         })
 
-    return capital, trades, equity_curve
+    return (
+        capital,
+        trades,
+        equity_curve
+    )
 
 
 def calculate_statistics(
@@ -259,11 +299,13 @@ def calculate_statistics(
     ]
 
     total_profit = (
-        final_capital - initial_capital
+        final_capital
+        - initial_capital
     )
 
     total_return = (
-        total_profit / initial_capital
+        total_profit
+        / initial_capital
     ) * 100
 
     if total_trades > 0:
@@ -274,6 +316,7 @@ def calculate_statistics(
         ) * 100
 
     else:
+
         win_rate = 0
 
     total_fees = sum(
@@ -316,7 +359,8 @@ def calculate_max_drawdown(
             peak = equity
 
         drawdown = (
-            (equity - peak) / peak
+            (equity - peak)
+            / peak
         ) * 100
 
         if drawdown < max_drawdown:
