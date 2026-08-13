@@ -84,13 +84,12 @@ def calculate_buy_and_hold(
         initial_capital * fee_rate
     )
 
-    capital_after_entry_fee = (
+    capital_after_fee = (
         initial_capital - entry_fee
     )
 
     position = (
-        capital_after_entry_fee
-        / first_price
+        capital_after_fee / first_price
     )
 
     final_value = (
@@ -126,9 +125,249 @@ def calculate_buy_and_hold(
     }
 
 
+def build_trade_markers(
+    data,
+    trades
+):
+    buy_dates = []
+    buy_prices = []
+
+    sell_dates = []
+    sell_prices = []
+
+    stop_dates = []
+    stop_prices = []
+
+    target_dates = []
+    target_prices = []
+
+    for trade in trades:
+
+        trade_type = trade["type"]
+
+        date = trade["date"]
+
+        if trade_type == "BUY":
+
+            buy_dates.append(date)
+            buy_prices.append(
+                trade["price"]
+            )
+
+        elif trade_type == "SELL":
+
+            sell_dates.append(date)
+            sell_prices.append(
+                trade["exit_price"]
+            )
+
+        elif trade_type == "STOP LOSS":
+
+            stop_dates.append(date)
+            stop_prices.append(
+                trade["exit_price"]
+            )
+
+        elif trade_type == "TAKE PROFIT":
+
+            target_dates.append(date)
+            target_prices.append(
+                trade["exit_price"]
+            )
+
+        elif trade_type == "FINAL EXIT":
+
+            sell_dates.append(date)
+            sell_prices.append(
+                trade["exit_price"]
+            )
+
+    return (
+        buy_dates,
+        buy_prices,
+        sell_dates,
+        sell_prices,
+        stop_dates,
+        stop_prices,
+        target_dates,
+        target_prices
+    )
+
+
+def plot_price_chart(
+    data,
+    trades
+):
+    (
+        buy_dates,
+        buy_prices,
+        sell_dates,
+        sell_prices,
+        stop_dates,
+        stop_prices,
+        target_dates,
+        target_prices
+    ) = build_trade_markers(
+        data,
+        trades
+    )
+
+    plt.figure(figsize=(14, 7))
+
+    plt.plot(
+        data.index,
+        data["Close"],
+        label="BTC Price"
+    )
+
+    plt.plot(
+        data.index,
+        data["EMA20"],
+        label="EMA 20"
+    )
+
+    if buy_dates:
+
+        plt.scatter(
+            buy_dates,
+            buy_prices,
+            marker="^",
+            s=100,
+            label="BUY"
+        )
+
+    if sell_dates:
+
+        plt.scatter(
+            sell_dates,
+            sell_prices,
+            marker="v",
+            s=100,
+            label="SELL"
+        )
+
+    if stop_dates:
+
+        plt.scatter(
+            stop_dates,
+            stop_prices,
+            marker="x",
+            s=100,
+            label="STOP LOSS"
+        )
+
+    if target_dates:
+
+        plt.scatter(
+            target_dates,
+            target_prices,
+            marker="o",
+            s=80,
+            label="TAKE PROFIT"
+        )
+
+    plt.title(
+        "BTC Trading Strategy"
+    )
+
+    plt.xlabel("Date")
+    plt.ylabel("Price")
+
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_equity_curve(
+    equity_curve,
+    buy_hold,
+    initial_capital
+):
+    dates = [
+        point["date"]
+        for point in equity_curve
+    ]
+
+    strategy_values = [
+        point["equity"]
+        for point in equity_curve
+    ]
+
+    first_price = strategy_values[0]
+
+    buy_hold_values = []
+
+    for index in range(
+        len(dates)
+    ):
+
+        price_ratio = (
+            buy_hold["final_capital"]
+            / initial_capital
+        )
+
+        if len(dates) > 1:
+
+            progress = (
+                index
+                / (len(dates) - 1)
+            )
+
+            value = (
+                initial_capital
+                * (
+                    1
+                    + (
+                        price_ratio - 1
+                    )
+                    * progress
+                )
+            )
+
+        else:
+
+            value = initial_capital
+
+        buy_hold_values.append(
+            value
+        )
+
+    plt.figure(figsize=(14, 7))
+
+    plt.plot(
+        dates,
+        strategy_values,
+        label="Strategy"
+    )
+
+    plt.plot(
+        dates,
+        buy_hold_values,
+        label="Buy & Hold"
+    )
+
+    plt.title(
+        "Strategy vs Buy & Hold"
+    )
+
+    plt.xlabel("Date")
+    plt.ylabel(
+        "Portfolio Value ($)"
+    )
+
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+
+
 def main():
 
     initial_capital = 10000
+
     fee_rate = 0.001
     stop_loss = 0.02
     take_profit = 0.04
@@ -166,17 +405,22 @@ def main():
         axis=1
     )
 
-    # حذف ردیف‌هایی که اندیکاتور هنوز
-    # مقدار معتبر ندارد
     btc = btc.dropna(
-        subset=["EMA20", "RSI14"]
+        subset=[
+            "EMA20",
+            "RSI14"
+        ]
     )
 
     # =========================
-    # STRATEGY BACKTEST
+    # BACKTEST
     # =========================
 
-    final_capital, trades, equity_curve = run_backtest(
+    (
+        final_capital,
+        trades,
+        equity_curve
+    ) = run_backtest(
         btc,
         initial_capital=initial_capital,
         fee_rate=fee_rate,
@@ -269,17 +513,8 @@ def main():
         "\n=====================================\n"
     )
 
-    # =========================
-    # BUY & HOLD REPORT
-    # =========================
-
     print(
         "\n========== BUY & HOLD ==============\n"
-    )
-
-    print(
-        f"Initial Capital : "
-        f"${buy_hold['initial_capital']:,.2f}"
     )
 
     print(
@@ -306,10 +541,6 @@ def main():
         "\n=====================================\n"
     )
 
-    # =========================
-    # COMPARISON
-    # =========================
-
     difference = (
         statistics["total_return"]
         - buy_hold["return_percent"]
@@ -335,16 +566,24 @@ def main():
     )
 
     if difference > 0:
+
         print(
-            "Result          : Strategy performed better"
+            "Result          : "
+            "Strategy performed better"
         )
+
     elif difference < 0:
+
         print(
-            "Result          : Buy & Hold performed better"
+            "Result          : "
+            "Buy & Hold performed better"
         )
+
     else:
+
         print(
-            "Result          : Both performed equally"
+            "Result          : "
+            "Both performed equally"
         )
 
     print(
@@ -355,41 +594,28 @@ def main():
     # SAVE TRADES
     # =========================
 
-    save_trades_to_csv(trades)
-
-    # =========================
-    # EQUITY CURVE
-    # =========================
-
-    dates = [
-        point["date"]
-        for point in equity_curve
-    ]
-
-    equity_values = [
-        point["equity"]
-        for point in equity_curve
-    ]
-
-    plt.figure(figsize=(12, 6))
-
-    plt.plot(
-        dates,
-        equity_values,
-        label="Trading Strategy"
+    save_trades_to_csv(
+        trades
     )
 
-    plt.title(
-        "Trading Strategy Equity Curve"
+    # =========================
+    # PRICE CHART
+    # =========================
+
+    plot_price_chart(
+        btc,
+        trades
     )
 
-    plt.xlabel("Date")
-    plt.ylabel("Portfolio Value ($)")
+    # =========================
+    # EQUITY CHART
+    # =========================
 
-    plt.legend()
-    plt.grid(True)
-
-    plt.show()
+    plot_equity_curve(
+        equity_curve,
+        buy_hold,
+        initial_capital
+    )
 
 
 if __name__ == "__main__":
